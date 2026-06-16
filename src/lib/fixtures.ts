@@ -9,15 +9,8 @@ export function kstDate(m: ScheduleMatch): string {
   return kstDateKey(m.date, m.time);
 }
 
-/**
- * "Today" = the current frontier, i.e. the earliest match day (KST) that still
- * has an unplayed match. Derived from the live results so it advances on its own
- * as the snapshot refreshes — no hard-coded date.
- */
-export const TODAY: string = (() => {
-  const unplayed = SCHEDULE.filter((m) => !getResult(m.id)).map(kstDate);
-  return unplayed.length ? unplayed.sort()[0] : kstDate(SCHEDULE[SCHEDULE.length - 1]);
-})();
+/** "Today" = the actual current date (KST), stamped when results were refreshed. */
+export const TODAY: string = SNAPSHOT_DATE;
 
 /** Date the results snapshot was last refreshed (for the "기준" note). */
 export const UPDATED_AT = SNAPSHOT_DATE;
@@ -44,7 +37,10 @@ export const STAGE_ORDER: Stage[] = [
 
 export function matchStatus(m: ScheduleMatch): MatchStatus {
   if (getResult(m.id)) return "finished";
-  return kstDate(m) === TODAY ? "today" : "upcoming";
+  const d = kstDate(m);
+  // Past day without a result yet (snapshot lag) — treat as finished, not "today".
+  if (d < TODAY) return "finished";
+  return d === TODAY ? "today" : "upcoming";
 }
 
 export const ALL_MATCHES = SCHEDULE;

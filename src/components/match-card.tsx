@@ -76,7 +76,7 @@ export function MatchCard({ match }: { match: ScheduleMatch }) {
         <span className="text-[12px] font-medium text-muted-foreground">
           {stageTag(match)}
         </span>
-        {result ? (
+        {status === "finished" ? (
           <span className="rounded-full bg-muted px-2.5 py-1 text-[12px] font-medium text-muted-foreground">
             경기 종료
           </span>
