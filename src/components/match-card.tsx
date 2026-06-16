@@ -1,6 +1,6 @@
 import { MapPin } from "lucide-react";
 import { getTeam } from "@/lib/teams";
-import { toKST, shortDate } from "@/lib/format";
+import { toKST, toVenueLocal } from "@/lib/format";
 import { matchStatus, STAGE_LABEL } from "@/lib/fixtures";
 import { getResult } from "@/lib/results";
 import { cn } from "@/lib/utils";
@@ -56,10 +56,11 @@ function Side({
 export function MatchCard({ match }: { match: ScheduleMatch }) {
   const status = matchStatus(match);
   const kst = toKST(match.date, match.time);
+  const local = toVenueLocal(match.date, match.time, match.city);
   const result = getResult(match.id);
   const homeWin = result ? result.home > result.away : false;
   const awayWin = result ? result.away > result.home : false;
-  const isToday = status === "today" && !result;
+  const isToday = status === "today";
 
   return (
     <article
@@ -130,7 +131,7 @@ export function MatchCard({ match }: { match: ScheduleMatch }) {
           </span>
         </span>
         <span className="shrink-0 tabular">
-          현지 {shortDate(match.date)} {match.time}
+          현지 {local.label} {local.time}
         </span>
       </div>
     </article>

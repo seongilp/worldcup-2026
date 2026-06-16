@@ -1,14 +1,26 @@
 import { SCHEDULE, type ScheduleMatch } from "./schedule";
 import { kstDateKey } from "./format";
+import { getResult } from "./results";
+import { SNAPSHOT_DATE } from "./snapshot";
 import type { MatchStatus, Stage } from "./types";
-
-/** "Today" in Korea time for the demo. Group stage is under way. */
-export const TODAY = "2026-06-16";
 
 /** KST date key (YYYY-MM-DD) for a match, since the whole UI is Korea-time based. */
 export function kstDate(m: ScheduleMatch): string {
   return kstDateKey(m.date, m.time);
 }
+
+/**
+ * "Today" = the current frontier, i.e. the earliest match day (KST) that still
+ * has an unplayed match. Derived from the live results so it advances on its own
+ * as the snapshot refreshes — no hard-coded date.
+ */
+export const TODAY: string = (() => {
+  const unplayed = SCHEDULE.filter((m) => !getResult(m.id)).map(kstDate);
+  return unplayed.length ? unplayed.sort()[0] : kstDate(SCHEDULE[SCHEDULE.length - 1]);
+})();
+
+/** Date the results snapshot was last refreshed (for the "기준" note). */
+export const UPDATED_AT = SNAPSHOT_DATE;
 
 export const STAGE_LABEL: Record<Stage, string> = {
   group: "조별리그",
@@ -31,9 +43,8 @@ export const STAGE_ORDER: Stage[] = [
 ];
 
 export function matchStatus(m: ScheduleMatch): MatchStatus {
-  const d = kstDate(m);
-  if (d === TODAY) return "today";
-  return d < TODAY ? "past" : "upcoming";
+  if (getResult(m.id)) return "finished";
+  return kstDate(m) === TODAY ? "today" : "upcoming";
 }
 
 export const ALL_MATCHES = SCHEDULE;

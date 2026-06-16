@@ -31,5 +31,5 @@ export type Stage =
   | "bronze"
   | "final";
 
-/** Status derived purely from the schedule date vs. today (no fabricated scores). */
-export type MatchStatus = "past" | "today" | "upcoming";
+/** finished = has a real result; today = on the current frontier match day. */
+export type MatchStatus = "finished" | "today" | "upcoming";
