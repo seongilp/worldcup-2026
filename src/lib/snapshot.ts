@@ -38,4 +38,5 @@ export const RESULTS: Record<string, SnapshotResult> = {
   "M25": { home: 1, away: 1 },
   "M26": { home: 4, away: 1 },
   "M27": { home: 6, away: 0 },
+  "M28": { home: 1, away: 0 },
 };
