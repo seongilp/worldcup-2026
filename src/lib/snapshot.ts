@@ -8,7 +8,7 @@ export interface SnapshotResult {
 }
 
 /** KST date this snapshot was built — used as the app's "today". */
-export const SNAPSHOT_DATE = "2026-08-03";
+export const SNAPSHOT_DATE = "2026-08-04";
 
 export const RESULTS: Record<string, SnapshotResult> = {
   "M1": { home: 2, away: 0 },
