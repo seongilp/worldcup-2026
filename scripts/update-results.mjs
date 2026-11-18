@@ -4,6 +4,10 @@
 //
 //   node scripts/update-results.mjs
 //
+// If Naver cannot be reached, the committed src/lib/snapshot.ts is kept as is and
+// the script still exits 0, so the build and deploy continue with the last good
+// results instead of failing the whole workflow.
+//
 // Source: https://m.sports.naver.com/fifaworldcup2026/record (api-gw.sports.naver.com)
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -49,6 +53,45 @@ function todayKST() {
   }).format(new Date());
 }
 
+// Some networks never answer this endpoint (GitHub-hosted runners get ECONNRESET
+// or a stalled connection), so every attempt gets a timeout and a short retry.
+const FETCH_ATTEMPTS = 3;
+const FETCH_TIMEOUT_MS = 25_000;
+const RETRY_DELAYS_MS = [3_000, 8_000];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function describeError(e) {
+  const cause = e?.cause?.code ?? e?.cause?.message;
+  return cause ? `${e.name}: ${e.message} (${cause})` : `${e.name}: ${e.message}`;
+}
+
+async function fetchGames() {
+  let lastError;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(GAMES_URL, {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Referer: "https://m.sports.naver.com/",
+        },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`Naver API ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      lastError = e;
+      console.warn(
+        `Naver API attempt ${attempt}/${FETCH_ATTEMPTS} failed: ${describeError(e)}`,
+      );
+      if (attempt < FETCH_ATTEMPTS) {
+        await sleep(RETRY_DELAYS_MS[attempt - 1] ?? 8_000);
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function main() {
   const schedule = loadSchedule();
   const pair2id = {};
@@ -56,15 +99,26 @@ async function main() {
     if (m.stage === "group") pair2id[pairKey(m.home, m.away)] = m;
   }
 
-  const res = await fetch(GAMES_URL, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      Referer: "https://m.sports.naver.com/",
-    },
-  });
-  if (!res.ok) throw new Error(`Naver API ${res.status}`);
-  const data = await res.json();
+  let data;
+  try {
+    data = await fetchGames();
+  } catch (e) {
+    // The committed snapshot stays valid, so keep it and let the build and deploy
+    // go ahead. A results refresh that cannot reach Naver is not a build failure.
+    console.warn(
+      `::warning::Naver Sports API unreachable after ${FETCH_ATTEMPTS} attempts — keeping the existing snapshot. ${describeError(e)}`,
+    );
+    console.warn("src/lib/snapshot.ts left unchanged.");
+    return;
+  }
+
   const games = data?.result?.games ?? [];
+  if (games.length === 0) {
+    console.warn(
+      "::warning::Naver Sports API returned no games — keeping the existing snapshot.",
+    );
+    return;
+  }
 
   const results = {};
   let skipped = 0;
